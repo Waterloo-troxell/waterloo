@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/*
+  Waterloo's design tokens, taken verbatim from docs/WATERLOO_V1_BRIEF.md §8
+  so the names in the code match the names in the brief.
+
+  Gold is the ONLY accent, and it is reserved: the primary button, focus
+  rings, the Cmd+K highlight, and the approval-needed badge. Nothing else may
+  use it, so a pending request is the one thing on screen that glows.
+
+  Dark is the only theme in v1. A light theme is explicitly optional.
+*/
+@theme {
+  --color-bg: #0a0a0b;
+  --color-panel: #1a1b1e;
+  --color-raised: #24262a;
+  --color-border: #33353a;
+  --color-gold: #b8975a;
+  --color-gold-hover: #c9a96e;
+  --color-gold-pressed: #9c7e48;
+  --color-text: #e9e7e2;
+  --color-text-muted: #a09e97;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Gold focus ring everywhere, per the brief. */
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

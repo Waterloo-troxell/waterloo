@@ -1,0 +1,70 @@
+name: Deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: ${{ github.event_name == 'push' && 'Production' || 'Preview' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Nothing reaches production unless the checks passed.
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Stamp the build
+        run: |
+          {
+            echo "NEXT_PUBLIC_BUILD_SHA=${GITHUB_SHA}"
+            echo "NEXT_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "NEXT_PUBLIC_DEPLOY_CONTEXT=${{ github.event_name == 'push' && 'production' || 'preview' }}"
+          } >> "$GITHUB_ENV"
+
+      # Preview deploys cost no Netlify credits and are unlimited.
+      - name: Deploy preview
+        if: github.event_name == 'pull_request'
+        id: preview
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          npx netlify-cli deploy --build \
+            --alias "pr-${{ github.event.number }}" \
+            --json > deploy.json
+          echo "url=$(node -p "require('./deploy.json').deploy_url")" >> "$GITHUB_OUTPUT"
+
+      - name: Put the preview link on the pull request
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview
+          message: |
+            **Preview deploy:** ${{ steps.preview.outputs.url }}
+
+            Test here before approving. Preview deploys are free and unlimited;
+            only merging to `main` spends Netlify credits.
+
+      # Production costs 15 of 300 monthly credits. Roughly one per milestone.
+      - name: Deploy production
+        if: github.event_name == 'push'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx netlify-cli deploy --build --prod

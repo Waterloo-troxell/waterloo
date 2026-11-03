@@ -1,0 +1,34 @@
+name: Keep the database awake
+
+# Supabase pauses a free project after a week without use, and a paused
+# database is a dead app. This pings it well inside that window. It is a
+# single HTTP request, so it costs almost nothing.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1,4" # Mondays and Thursdays, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "No SUPABASE_URL secret set yet — nothing to ping."
+            exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/")
+          echo "Supabase answered $code"
+          # Any answer at all counts as activity. Only a network failure is a problem.
+          [ "$code" != "000" ]

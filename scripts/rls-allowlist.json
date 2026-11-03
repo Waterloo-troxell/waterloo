@@ -1,0 +1,5 @@
+{
+  "_comment": "Tables that may skip a rule, each with a reason. Adding one is a reviewed change: it widens a security guarantee, so say why in the pull request.",
+  "noWorkspaceId": [],
+  "noPolicies": []
+}
