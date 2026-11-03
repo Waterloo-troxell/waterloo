@@ -1,0 +1,39 @@
+# --- dependencies ---
+node_modules/
+.pnp
+.pnp.*
+
+# --- build output ---
+/.next/
+/out/
+/build/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- secrets: never commit, no exceptions ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p8
+*.age
+*service-role*
+*service_role*
+secrets.*
+
+# --- private docs (this repo is PUBLIC; account/owner details stay out) ---
+*.private.md
+
+# --- supabase local state ---
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# --- tooling ---
+/coverage/
+.netlify/
+.vercel/
+.DS_Store
+npm-debug.log*
+.eslintcache
