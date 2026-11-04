@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Never let two runs of the same branch pile up.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, types, tests, secrets, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The secret scan reads every tracked file; it does not need history.
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Scan for secrets
+        run: npm run check:secrets
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  database:
+    name: Row-level security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Start the local Supabase stack
+        run: npx supabase start
+
+      # Prove the guard still catches an unprotected table. A check that
+      # cannot fail is not a check, so this runs before the real one.
+      - name: Prove the guard fires
+        run: npm run check:rls:selftest
+
+      - name: Every table must have row-level security
+        run: npm run check:rls
+
+      - name: Stop the stack
+        if: always()
+        run: npx supabase stop --no-backup || true

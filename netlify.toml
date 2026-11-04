@@ -1,0 +1,22 @@
+# Waterloo is built in GitHub Actions and the finished output is handed to
+# Netlify, so Netlify never runs a build of its own. The site is deliberately
+# NOT linked to the repository: on the free plan that triggers the
+# "unrecognized Git contributor" block, and linking would also spend build
+# allowance we do not need to spend.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# A private workspace living at a public address. Belt and braces: Next sets
+# these too, but a static asset served straight off the CDN skips Next.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive, nosnippet"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"

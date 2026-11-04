@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    name: ${{ github.event_name == 'push' && 'Production' || 'Preview' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Nothing reaches production unless the checks passed.
+    steps:
+      # Until the Netlify token exists, this job reports green and explains
+      # itself rather than failing. A red check nobody can act on trains
+      # people to ignore red checks.
+      - name: Are the Netlify credentials set yet?
+        id: creds
+        env:
+          TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          SITE: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$SITE" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy skipped::NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID are not set yet, so there is nothing to deploy to. This is expected until Phase B of M0 is done."
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.creds.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v5
+        if: steps.creds.outputs.ready == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+        if: steps.creds.outputs.ready == 'true'
+
+      - name: Stamp the build
+        if: steps.creds.outputs.ready == 'true'
+        run: |
+          {
+            echo "NEXT_PUBLIC_BUILD_SHA=${GITHUB_SHA}"
+            echo "NEXT_PUBLIC_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "NEXT_PUBLIC_DEPLOY_CONTEXT=${{ github.event_name == 'push' && 'production' || 'preview' }}"
+          } >> "$GITHUB_ENV"
+
+      # Preview deploys cost no Netlify credits and are unlimited.
+      - name: Deploy preview
+        if: github.event_name == 'pull_request' && steps.creds.outputs.ready == 'true'
+        id: preview
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          npx netlify-cli deploy --build \
+            --alias "pr-${{ github.event.number }}" \
+            --json > deploy.json
+          echo "url=$(node -p "require('./deploy.json').deploy_url")" >> "$GITHUB_OUTPUT"
+
+      - name: Put the preview link on the pull request
+        if: github.event_name == 'pull_request' && steps.creds.outputs.ready == 'true'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: preview
+          message: |
+            **Preview deploy:** ${{ steps.preview.outputs.url }}
+
+            Test here before approving. Preview deploys are free and unlimited;
+            only merging to `main` spends Netlify credits.
+
+      # Production costs 15 of 300 monthly credits. Roughly one per milestone.
+      - name: Deploy production
+        if: github.event_name == 'push' && steps.creds.outputs.ready == 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx netlify-cli deploy --build --prod

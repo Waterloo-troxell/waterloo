@@ -1,0 +1,51 @@
+{
+  "name": "waterloo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The private workspace of Waterloo's two co-owners.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:governance": "vitest run tests/governance",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:new": "supabase migration new",
+    "db:status": "supabase status",
+    "check:rls": "node scripts/check-rls.mjs",
+    "check:rls:selftest": "node scripts/check-rls.mjs --selftest",
+    "check:secrets": "node scripts/scan-secrets.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "verify": "npm run lint && npm run typecheck && npm run check:secrets && npm run test",
+    "deploy:preview": "netlify deploy --build",
+    "deploy:prod": "netlify deploy --build --prod"
+  },
+  "dependencies": {
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.4",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.14.0",
+    "eslint-config-next": "16.4.5",
+    "postgres": "4.0.0",
+    "supabase": "^3.0.0",
+    "tailwindcss": "4.3.4",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  }
+}

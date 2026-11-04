@@ -2,7 +2,9 @@
 
 Waterloo is the private, internal workspace of two co-owners, Gunner and Kaden, who run a small freelance coding business. Exactly two people use it. It is not a product and will not have outside users in v1.
 
-**Before planning or starting any milestone, read `docs/WATERLOO_V1_BRIEF.md`.** It holds the full v1 scope, permission tiers, module acceptance criteria, infrastructure constraints, design tokens, and build order. This file holds the rules that apply in every session.
+**Before planning or starting any milestone, read `docs/WATERLOO_V1_BRIEF.private.md`.** It holds the full v1 scope, permission tiers, module acceptance criteria, infrastructure constraints, design tokens, and build order. This file holds the rules that apply in every session.
+
+That brief is **not committed** — this repository is public, and the brief maps owners to accounts. It lives on each owner's own machine and in the shared Bitwarden vault. `.gitignore` blocks every `*.private.md` file so it cannot be committed by accident. See `docs/README.md`.
 
 ## The one rule
 
@@ -71,4 +73,27 @@ Name each test after its requirement, for example `G2_owner_cannot_remove_other_
 
 ## Commands
 
-Fill these in as the project is scaffolded: dev server, local Supabase start and reset, tests, lint, type check, new migration, and deploy.
+Node 24 LTS (see `.nvmrc`). `npm install` once, then:
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the app at http://localhost:3000 |
+| `npm run build` | Production build |
+| `npm run verify` | lint + typecheck + check:secrets + test. **Run this before opening a pull request** |
+| `npm test` | Run the tests, including the G-requirement scoreboard |
+| `npm run test:governance` | Run only the G-requirement tests |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript, no emit |
+| `npm run db:start` | Start the local Supabase stack (needs Docker Desktop running) |
+| `npm run db:stop` | Stop the local stack |
+| `npm run db:reset` | Wipe the local database and replay every migration |
+| `npm run db:new <name>` | Create a migration file in `supabase/migrations` |
+| `npm run db:status` | Print the local stack's URLs and keys |
+| `npm run check:rls` | Fail if any table in `public` lacks row-level security, FORCE, policies, or `workspace_id` (needs the local stack) |
+| `npm run check:rls:selftest` | Prove the guard fires: create an unprotected table, confirm it is caught, drop it |
+| `npm run check:secrets` | Fail if anything that looks like a credential is tracked by git |
+| `npm run icons` | Regenerate the app icons from `scripts/make-icons.mjs` |
+| `npm run deploy:preview` | Build and deploy a preview (CI does this on every pull request) |
+| `npm run deploy:prod` | Build and deploy production (CI does this on merge to `main`) |
+
+**Production deploys are rationed.** Netlify's free plan gives 300 credits a month and charges 15 per production deploy — about 20 a month, shared with bandwidth. Preview deploys are free and unlimited. So test on previews freely and merge to `main` deliberately: roughly one production deploy per milestone, not one per pull request.
