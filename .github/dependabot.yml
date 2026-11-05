@@ -13,6 +13,15 @@ updates:
         dependency-type: production
       development:
         dependency-type: development
+    ignore:
+      # typescript-eslint, which ships inside eslint-config-next, does not
+      # support TypeScript 7 — a major bump breaks `npm run lint` outright.
+      # Verified by CI on dependabot PR #5: "typescript-eslint does not
+      # support TS 7.0." Tracking upstream:
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      # Remove this once typescript-eslint supports TS >= 7.1.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
