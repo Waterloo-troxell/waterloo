@@ -53,7 +53,7 @@ jobs:
             echo "::notice title=Deploy skipped::NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID are not set yet, so there is nothing to deploy to. This is expected until Phase B of M0 is done."
           fi
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.creds.outputs.ready == 'true'
 
       - uses: actions/setup-node@v5
