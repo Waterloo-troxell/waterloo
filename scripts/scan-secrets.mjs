@@ -24,7 +24,7 @@ const PATTERNS = [
   { name: "AWS access key id", re: /\bAKIA[0-9A-Z]{16}\b/ },
   { name: "Slack token", re: /\bxox[abprs]-[A-Za-z0-9-]{10,}\b/ },
   { name: "Google OAuth client secret", re: /\bGOCSPX-[A-Za-z0-9_-]{20,}\b/ },
-  { name: "filled-in secret environment variable", re: /^\s*(?:SUPABASE_SERVICE_ROLE_KEY|NETLIFY_AUTH_TOKEN|SMTP_PASSWORD|GMAIL_APP_PASSWORD|DATABASE_PASSWORD)\s*=\s*\S+/m },
+  { name: "filled-in secret environment variable", re: /^\s*(?:SUPABASE_SERVICE_ROLE_KEY|SUPABASE_SECRET_KEY|NETLIFY_AUTH_TOKEN|NETLIFY_SITE_ID|SMTP_PASSWORD|GMAIL_APP_PASSWORD|DATABASE_PASSWORD)\s*=\s*\S+/m },
 ];
 
 /** Files whose whole job is to show the shape of a secret without being one. */

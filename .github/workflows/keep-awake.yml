@@ -1,8 +1,11 @@
 name: Keep the database awake
 
 # Supabase pauses a free project after a week without use, and a paused
-# database is a dead app. This pings it well inside that window. It is a
-# single HTTP request, so it costs almost nothing.
+# database is a dead app. This pings it well inside that window.
+#
+# It deliberately sends NO credential. A keep-alive that depends on a key
+# breaks whenever the key does, and it breaks quietly — which is worse than
+# not having one at all.
 
 on:
   schedule:
@@ -20,15 +23,37 @@ jobs:
       - name: Ping Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          if [ -z "$SUPABASE_URL" ]; then
-            echo "No SUPABASE_URL secret set yet — nothing to ping."
-            exit 0
+          set -u
+          if [ -z "${SUPABASE_URL}" ]; then
+            echo "::error title=No SUPABASE_URL::The SUPABASE_URL secret is not set, so nothing is keeping the database awake. A free Supabase project pauses after a week idle."
+            exit 1
           fi
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/")
-          echo "Supabase answered $code"
-          # Any answer at all counts as activity. Only a network failure is a problem.
-          [ "$code" != "000" ]
+
+          # Tolerate a trailing slash on the stored URL.
+          base="${SUPABASE_URL%/}"
+          awake=0
+
+          for path in /auth/v1/health /rest/v1/; do
+            # curl already prints 000 on a connection failure, and also exits
+            # non-zero — so do NOT add `|| echo 000`, or the code doubles up.
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${base}${path}") || true
+            code="${code:-000}"
+            echo "GET ${base}${path} -> ${code}"
+            case "${code}" in
+              200|401|403)
+                # The project answered. 401 and 403 mean "I am here, but I do
+                # not like that request" — which still proves it is awake, and
+                # waking it is this job's only purpose.
+                awake=1
+                break
+                ;;
+            esac
+          done
+
+          if [ "${awake}" != "1" ]; then
+            echo "::error title=Keep-alive failed::The project did not answer. A 404 usually means SUPABASE_URL is wrong; 000 means it could not be reached; 5xx may mean it is already paused. Check the project in the Supabase dashboard."
+            exit 1
+          fi
+
+          echo "Database is awake."
