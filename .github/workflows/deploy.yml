@@ -1,9 +1,26 @@
 name: Deploy
 
+# Paths that cannot change the built site do not get a deploy. A production
+# deploy costs 15 of 300 monthly Netlify credits, so spending one on a CI
+# config bump or a typo in a README is real money for nothing.
+# NOTE: the two lists below are duplicated on purpose. GitHub Actions does
+# not support YAML anchors in workflow files, so keep them in step by hand.
 on:
   pull_request:
+    paths-ignore:
+      - ".github/**"
+      - "docs/**"
+      - "**/*.md"
+      - ".env.example"
+      - ".gitignore"
   push:
     branches: [main]
+    paths-ignore:
+      - ".github/**"
+      - "docs/**"
+      - "**/*.md"
+      - ".env.example"
+      - ".gitignore"
 
 concurrency:
   group: deploy-${{ github.ref }}
