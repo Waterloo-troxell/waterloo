@@ -89,7 +89,7 @@ jobs:
 
       - name: Put the preview link on the pull request
         if: github.event_name == 'pull_request' && steps.creds.outputs.ready == 'true'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: preview
           message: |
