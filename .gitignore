@@ -37,3 +37,6 @@ supabase/.env
 .DS_Store
 npm-debug.log*
 .eslintcache
+
+# Written automatically by `next dev` (hints for AI coding tools). Not ours to track.
+AGENTS.md

@@ -40,8 +40,13 @@ jobs:
       - name: Scan for secrets
         run: npm run check:secrets
 
+      # This job has no database, so the tests that need one are skipped
+      # here and run for real in the "Row-level security" job below. That
+      # job is a required check, so a skipped test can never reach main.
       - name: Tests
         run: npm test
+        env:
+          WATERLOO_SKIP_DB: "1"
 
       - name: Build
         run: npm run build
@@ -70,6 +75,12 @@ jobs:
 
       - name: Every table must have row-level security
         run: npm run check:rls
+
+      # G1, G2, G4 and the sign-in rules, against real Postgres and real
+      # Supabase Auth. (The job keeps its old name because branch protection
+      # requires it by that name.)
+      - name: Governance and sign-in tests against the real database
+        run: npx vitest run tests/governance tests/auth
 
       - name: Stop the stack
         if: always()
