@@ -1,5 +1,12 @@
 {
   "_comment": "Tables that may skip a rule, each with a reason. Adding one is a reviewed change: it widens a security guarantee, so say why in the pull request.",
   "noWorkspaceId": [],
-  "noPolicies": []
+  "noPolicies": [
+    "recovery_codes",
+    "recovery_attempts"
+  ],
+  "_reasons": {
+    "recovery_codes": "Deliberately sealed (M1). Holds bcrypt hashes of each owner's recovery codes. No policy means no app user can read or write it at all; the only way in is generate_recovery_codes(), recovery_codes_remaining() and redeem_recovery_code(), which act only on the caller's own account (G4).",
+    "recovery_attempts": "Deliberately sealed (M1). Counts wrong recovery-code guesses so redeem_recovery_code() can allow only 5 an hour. Only that function writes it."
+  }
 }

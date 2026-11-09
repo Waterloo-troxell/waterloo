@@ -74,6 +74,57 @@ jobs:
             echo "NEXT_PUBLIC_DEPLOY_CONTEXT=${{ github.event_name == 'push' && 'production' || 'preview' }}"
           } >> "$GITHUB_ENV"
 
+      # Previews talk to the separate preview database (Kaden's free
+      # project), so a pull request's database changes never touch real data
+      # before the other owner approves them. Production talks to the real one.
+      # Both values are browser-safe; row-level security guards the data.
+      - name: Point the build at its database
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          URL: ${{ github.event_name == 'push' && secrets.SUPABASE_URL || secrets.PREVIEW_SUPABASE_URL }}
+          KEY: ${{ github.event_name == 'push' && secrets.SUPABASE_ANON_KEY || secrets.PREVIEW_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::warning title=No database for this deploy::The Supabase URL or key secret for this deploy is not set, so the site will say no database is connected."
+          fi
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=${URL}"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${KEY}"
+          } >> "$GITHUB_ENV"
+
+      # Database changes go in before the site that needs them. If a migration
+      # fails, the job stops here and the old site stays up.
+      - name: Apply database migrations
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          DB_URL: ${{ github.event_name == 'push' && secrets.PRODUCTION_DATABASE_URL || secrets.PREVIEW_DATABASE_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::warning title=Migrations not applied::No database connection string is set for this deploy, so its migrations were not applied."
+            exit 0
+          fi
+          npx supabase db push --remote="$DB_URL" --yes --skip-vault
+
+      # The one-time owner bootstrap (G1). It runs only when a reviewed file
+      # for this database exists and no owners are set yet; the database
+      # itself refuses a second run.
+      - name: Owner bootstrap, if this database has none yet
+        if: steps.creds.outputs.ready == 'true'
+        env:
+          DB_URL: ${{ github.event_name == 'push' && secrets.PRODUCTION_DATABASE_URL || secrets.PREVIEW_DATABASE_URL }}
+          FILE: supabase/bootstrap/${{ github.event_name == 'push' && 'production' || 'preview' }}.sql
+        run: |
+          if [ -z "$DB_URL" ] || [ ! -f "$FILE" ]; then
+            echo "No bootstrap to run."
+            exit 0
+          fi
+          owners=$(psql "$DB_URL" -Atc "select count(*) from public.workspace_members where role = 'owner'")
+          if [ "$owners" = "0" ]; then
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$FILE"
+          else
+            echo "Owners already set ($owners). Nothing to do."
+          fi
+
       # Preview deploys cost no Netlify credits and are unlimited.
       - name: Deploy preview
         if: github.event_name == 'pull_request' && steps.creds.outputs.ready == 'true'
